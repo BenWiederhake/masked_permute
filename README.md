@@ -111,13 +111,11 @@ Add at an appropriate position to your `Cargo.toml`:
 
 ```TOML
 [dependencies]
-masked_permut = { git = "https://github.com/BenWiederhake/masked_permute.git" }
+masked_permute = { git = "https://github.com/BenWiederhake/masked_permute.git" }
 ```
 
 That should be it.  You'll be glad to hear that `masked_permute` itself
 does not have any dependencies.
-
-<!-- FIXME: Check whether that acutally works! -->
 
 ### Additional step for best performance
 
