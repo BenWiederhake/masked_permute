@@ -76,6 +76,7 @@ two non-identical set bits of this mask.  Then it would produce these values:
 * `0b0000_0000_0010_0010u32`
 * `0b0000_0000_0010_0100u32`
 * `0b0000_0000_0100_0001u32`
+* and so on.
 
 As you can see, the "middle bits" were just skipped.
 
@@ -194,12 +195,10 @@ test bench_tiny_perm        ... bench:          83 ns/iter (+/- 8)
 ## TODOs
 
 Next up are these:
-* Import code from "that one" project
-* Care about integration issues
-* Set up performance testing so that I actually know what's happening
 * Fiddle around and analyse performance with:
-    * Using arrays(?) instead of `Vec`
-    * Keeping `bases` in `Permutations` instead of `PermIter`
+    * Using arrays instead of `Vec` should be faster.
+        Investigate why `historic/iter-uses-arrays` isn't faster.
+    * Struct order?
 * Possible extensions:
     * Try to compile with `nostdlib` or whatever that's called
     * Build for different kinds of integers
@@ -208,7 +207,7 @@ Next up are these:
 * Ask people for feedback on:
     * Performance methodology, performance improvements
     * Making it "Idiomatic Rust"
-    * Iterator-like interfaces that might be interesting to provide
+    * Other Iterator-like interfaces that might be interesting to provide
 
 ## Contribute
 
