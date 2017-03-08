@@ -1,0 +1,6 @@
+[package]
+name = "masked_permute"
+version = "0.1.0"
+authors = ["Ben Wiederhake <BenWiederhake.GitHub@gmx.de>"]
+
+[dependencies]
