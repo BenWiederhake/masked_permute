@@ -58,14 +58,18 @@ fn bench_tiny_perm(b: &mut Bencher) {
 
 #[bench]
 fn bench_make_bases_small(b: &mut Bencher) {
+    let mut bases = [77u32; 33];
     b.iter(|| {
-        raw::make_bases(0b1101u32)
+        raw::make_bases(0b1101u32, &mut bases);
+        bases[3]
     });
 }
 
 #[bench]
 fn bench_make_bases_large(b: &mut Bencher) {
+    let mut bases = [77u32; 33];
     b.iter(|| {
-        raw::make_bases(0b11010101_11101011_11101101u32)
+        raw::make_bases(0xFA77AFE7u32, &mut bases);
+        bases[29]
     });
 }

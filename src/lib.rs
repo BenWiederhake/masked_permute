@@ -11,9 +11,9 @@ pub struct Permutations {
 /// Iterator object, yields single permutations and has a 'next' method.
 /// Not supposed to be stored explicitly.
 pub struct PermIter {
-    bases: Vec<u32>,
     ones: u32,
     next: Option<u32>,
+    bases: [u32; 33],
 }
 
 impl Iterator for PermIter {
@@ -35,6 +35,7 @@ impl Iterator for PermIter {
 
 impl Permutations {
     pub fn over(mask: u32, count: u32) -> Self {
+        assert!(count < 33);
         Permutations {
             mask: mask,
             count: count,
@@ -46,19 +47,19 @@ impl Permutations {
             // Use invalid values in many places, in order to fail-fast
             // if anything goes wrong.
             PermIter{
-                bases: vec![],
+                bases: [0u32; 33],
                 ones: u32::max_value(),
                 next: None,
             }
         } else {
-            let bases = raw::make_bases(self.mask);
-            assert!(self.count < 33);
-            let start: u32 = bases[self.count as usize];
-            PermIter{
-                bases: bases,
+            let mut iter = PermIter{
+                bases: [0u32; 33],
                 ones: self.count,
-                next: Some(start),
-            }
+                next: None,
+            };
+            raw::make_bases(self.mask, &mut iter.bases);
+            iter.next = Some(iter.bases[self.count as usize]);
+            iter
         }
     }
 }

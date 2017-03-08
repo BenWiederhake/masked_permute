@@ -2,50 +2,83 @@
 use std;
 
 /// Creates a 'bases' lookup table, needed by 'advance'.
-// 'Vec' was probably a poor design choice.
-// Should take an array into which it writes,
-// thus saving a dereference in each permute step.
-pub fn make_bases(mask: u32) -> Vec<u32> {
-    // mask.count_ones() must be a valid index.
-    let mut bases = Vec::with_capacity(33);
+pub fn make_bases(mask: u32, bases_into: &mut [u32; 33]) {
+    // mask.count_ones() must be a valid index,
+    // so 'bases_into[32]' must be an actual element.
     let mut rem_mask = mask;
     let mut acc_mask = 0;
-    bases.push(0);  // The base with 0 bits set is always 0.
 
-    while 0 != rem_mask {
-        // rustc is clever enough here to optimize `!rem_mask + 1` to `-v`.
-        // Can't express that in high-level because of types.
-        let lowest_bit = rem_mask & (!rem_mask + 1);  // Determine it
+    for field in bases_into[0..32].iter_mut() {
+        *field = acc_mask;
+
+        // Determine it.  An overflow can only happen when we're about
+        // to "0 & " anyway, so don't can about that behavior.
+        let lowest_bit = rem_mask & 0u32.wrapping_sub(rem_mask);
         rem_mask &= !lowest_bit;  // Remove it from "remaining" mask
         acc_mask |= lowest_bit;  // Add it to the "accumulated" mask
-        bases.push(acc_mask);
     }
+    bases_into[32] = acc_mask;
 
-    assert!(bases.len() <= 65);
-    assert_eq!(bases.len() as u32, mask.count_ones() + 1);
+    assert_eq!(acc_mask, mask);
+    debug_assert_eq!(bases_into[mask.count_ones() as usize], mask);
+}
 
+/// Allocates and returns a 'bases' lookup table.
+/// Large return type!
+/// Use as a helper function.
+pub fn create_bases(mask: u32) -> [u32; 33] {
+    let mut bases = [0u32; 33];
+    make_bases(mask, &mut bases);
     bases
 }
 
 #[test]
 fn test_bases_0() {
-    assert_eq!(make_bases(0b0), vec![0b0]);
+    let mut bases = [0u32; 33];
+    let expected = [0u32; 33];
+    make_bases(0b0, &mut bases);
+    assert_eq!(&bases[..], &expected[..]);
 }
 
 #[test]
 fn test_bases_1() {
-    assert_eq!(make_bases(0b1), vec![0b0, 0b1]);
+    let expected : [u32; 33] =
+        [0b0, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1,
+         0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1,
+         0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1,
+         0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1, 0b1];
+    assert_eq!(&create_bases(0b1)[..], &expected[..]);
 }
 
 #[test]
 fn test_bases_11() {
-    assert_eq!(make_bases(0b11), vec![0b00, 0b01, 0b11]);
+    let expected : [u32; 33] =
+        [0b00, 0b01, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11,
+         0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11,
+         0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11,
+         0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11, 0b11];
+    assert_eq!(&create_bases(0b11)[..], &expected[..]);
 }
 
 #[test]
 fn test_bases_11011() {
-    assert_eq!(make_bases(0b11011),
-        vec![0b00000, 0b00001, 0b00011, 0b01011, 0b11011]);
+    let expected : [u32; 33] =
+        [0b00000, 0b00001, 0b00011, 0b01011, 0b11011, 0b11011, 0b11011, 0b11011,
+         0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011,
+         0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011,
+         0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011, 0b11011,
+         0b11011];
+    assert_eq!(&create_bases(0b11011)[..], &expected[..]);
+}
+
+#[test]
+fn test_bases_full() {
+    let expected : [u32; 33] =
+        [0x00000000, 0x00000001, 0x00000003, 0x00000007, 0x0000000F, 0x0000001F, 0x0000003F, 0x0000007F,
+         0x000000FF, 0x000001FF, 0x000003FF, 0x000007FF, 0x00000FFF, 0x00001FFF, 0x00003FFF, 0x00007FFF,
+         0x0000FFFF, 0x0001FFFF, 0x0003FFFF, 0x0007FFFF, 0x000FFFFF, 0x001FFFFF, 0x003FFFFF, 0x007FFFFF,
+         0x00FFFFFF, 0x01FFFFFF, 0x03FFFFFF, 0x07FFFFFF, 0x0FFFFFFF, 0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF];
+    assert_eq!(&create_bases(0xFFFFFFFF)[..], &expected[..]);
 }
 
 /// Computes the lexicographically next permutation of the bitmask `last_pos`
@@ -59,11 +92,10 @@ fn test_bases_11011() {
 ///
 /// Note that this implements wrap-around.  So inputting the lexicographically
 /// *last* permutation will yield the lexicographically *first* permutation.
-pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> u32 {
+pub fn advance(bases: &[u32; 33], ones: u32, last_perm: u32) -> u32 {
     // Hot path, so disable some assertions for release.
     debug_assert_eq!(last_perm.count_ones(), ones);
-    debug_assert!(ones <= (bases.len() - 1) as u32);
-    let mask = bases.last().unwrap();
+    let mask = bases[32];
 
     // Set it up
     let t = last_perm | last_perm.wrapping_sub(1) | !mask;
@@ -92,14 +124,14 @@ pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> u32 {
 
 #[test]
 fn test_advance_11_1() {
-    let bases = make_bases(0b11);
+    let bases = create_bases(0b11);
     assert_eq!(advance(&bases, 1, 0b01), 0b10);
     assert_eq!(advance(&bases, 1, 0b10), 0b01);
 }
 
 #[test]
 fn test_advance_1101_1() {
-    let bases = make_bases(0b1101);
+    let bases = create_bases(0b1101);
     assert_eq!(advance(&bases, 1, 0b0001), 0b0100);
     assert_eq!(advance(&bases, 1, 0b0100), 0b1000);
     assert_eq!(advance(&bases, 1, 0b1000), 0b0001);
@@ -107,7 +139,7 @@ fn test_advance_1101_1() {
 
 #[test]
 fn test_advance_1101_2() {
-    let bases = make_bases(0b1101);
+    let bases = create_bases(0b1101);
     assert_eq!(advance(&bases, 2, 0b0101), 0b1001);
     assert_eq!(advance(&bases, 2, 0b1001), 0b1100);
     assert_eq!(advance(&bases, 2, 0b1100), 0b0101);
@@ -115,7 +147,7 @@ fn test_advance_1101_2() {
 
 #[test]
 fn test_advance_11011_2() {
-    let bases = make_bases(0b11011);
+    let bases = create_bases(0b11011);
     assert_eq!(advance(&bases, 2, 0b00011), 0b01001);
     assert_eq!(advance(&bases, 2, 0b01001), 0b01010);
     assert_eq!(advance(&bases, 2, 0b01010), 0b10001);
@@ -128,14 +160,14 @@ fn test_advance_11011_2() {
 fn test_advance_corner_1() {
     let u32max = std::u32::MAX;
 
-    let bases = make_bases(0b0);
+    let bases = create_bases(0b0);
     assert_eq!(advance(&bases, 0, 0b0000), 0b0000);
 
-    let bases = make_bases(u32max);
+    let bases = create_bases(u32max);
     assert_eq!(advance(&bases, 31, u32max - 1), (u32max - 1) >> 1);
     assert_eq!(advance(&bases, 32, u32max), u32max);
 
-    let bases = make_bases(0x8000_0001);
+    let bases = create_bases(0x8000_0001);
     assert_eq!(advance(&bases, 1, 0x0000_0001), 0x8000_0000);
     assert_eq!(advance(&bases, 1, 0x8000_0000), 0x0000_0001);
 }
