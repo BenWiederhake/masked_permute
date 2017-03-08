@@ -22,7 +22,12 @@ impl Iterator for PermIter {
     fn next(&mut self) -> Option<u32> {
         let to_return: Option<u32> = self.next;
         if let Some(last_perm) = self.next {
-            self.next = raw::advance(&self.bases, self.ones, last_perm);
+            let next_perm = raw::advance(&self.bases, self.ones, last_perm);
+            if next_perm > last_perm {
+                self.next = Some(next_perm);
+            } else {
+                self.next = None;
+            }
         }
         to_return
     }

@@ -12,7 +12,6 @@ fn main() {
 
     let actual = raw::advance(&bases, ones, prev);
     println!("After  {:032b}", prev);
-    // We know that there is a next one, so just 'unwrap()'.
-    println!("comes  {:032b}", actual.unwrap());
+    println!("comes  {:032b}", actual);
     println!("within {:032b}", mask);
 }

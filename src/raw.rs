@@ -56,7 +56,10 @@ fn test_bases_11011() {
 /// and 64-bit hardware.  This is considered the "hot path".
 /// Note that the initialization are expected to be called significantly less often,
 /// so 'make_bases' can be considered cold.
-pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> Option<u32> {
+///
+/// Note that this implements wrap-around.  So inputting the lexicographically
+/// *last* permutation will yield the lexicographically *first* permutation.
+pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> u32 {
     // Hot path, so disable some assertions for release.
     debug_assert_eq!(last_perm.count_ones(), ones);
     debug_assert!(ones <= (bases.len() - 1) as u32);
@@ -65,7 +68,7 @@ pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> Option<u32> {
     // Set it up
     let t = last_perm | last_perm.wrapping_sub(1) | !mask;
     /*
-     * The ".overflowing_add" is some hackery that needs justification.
+     * The ".wrapping_sub" is some hackery that needs justification.
      * Here's a line of reasoning:
      * - The underflow (-1u32) only occurs when last_perm is 0.
      * - Whenever last_perm is 0, then mask is 0
@@ -79,52 +82,46 @@ pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> Option<u32> {
 
     // Exploit the carry-chain to find the bit that will be *set* in the
     // next permutation, and clean up filler-bits.
-    match t.overflowing_add(1) {
-        (next_upper_raw, false) => {
-            let next_upper = next_upper_raw & mask;
-            // This is essentially the "(((~t & -~t) - 1) >> (__builtin_ctz(v) + 1))"-part,
-            // but for arbitrary bitmasks, and precomputed.
-            let need_ones = ones - next_upper.count_ones();
-            let next_lower = bases[need_ones as usize];
-            Some(next_upper | next_lower)
-        },
-        // Last permutation reached
-        (_, true) => None,
-    }
+    let next_upper = t.overflowing_add(1).0 & mask;
+    // This is essentially the "(((~t & -~t) - 1) >> (__builtin_ctz(v) + 1))"-part,
+    // but for arbitrary bitmasks, and precomputed.
+    let need_ones = ones - next_upper.count_ones();
+    let next_lower = bases[need_ones as usize];
+    next_upper | next_lower
 }
 
 #[test]
 fn test_advance_11_1() {
     let bases = make_bases(0b11);
-    assert_eq!(advance(&bases, 1, 0b01), Some(0b10));
-    assert_eq!(advance(&bases, 1, 0b10), None);
+    assert_eq!(advance(&bases, 1, 0b01), 0b10);
+    assert_eq!(advance(&bases, 1, 0b10), 0b01);
 }
 
 #[test]
 fn test_advance_1101_1() {
     let bases = make_bases(0b1101);
-    assert_eq!(advance(&bases, 1, 0b0001), Some(0b0100));
-    assert_eq!(advance(&bases, 1, 0b0100), Some(0b1000));
-    assert_eq!(advance(&bases, 1, 0b1000), None);
+    assert_eq!(advance(&bases, 1, 0b0001), 0b0100);
+    assert_eq!(advance(&bases, 1, 0b0100), 0b1000);
+    assert_eq!(advance(&bases, 1, 0b1000), 0b0001);
 }
 
 #[test]
 fn test_advance_1101_2() {
     let bases = make_bases(0b1101);
-    assert_eq!(advance(&bases, 2, 0b0101), Some(0b1001));
-    assert_eq!(advance(&bases, 2, 0b1001), Some(0b1100));
-    assert_eq!(advance(&bases, 2, 0b1100), None);
+    assert_eq!(advance(&bases, 2, 0b0101), 0b1001);
+    assert_eq!(advance(&bases, 2, 0b1001), 0b1100);
+    assert_eq!(advance(&bases, 2, 0b1100), 0b0101);
 }
 
 #[test]
 fn test_advance_11011_2() {
     let bases = make_bases(0b11011);
-    assert_eq!(advance(&bases, 2, 0b00011), Some(0b01001));
-    assert_eq!(advance(&bases, 2, 0b01001), Some(0b01010));
-    assert_eq!(advance(&bases, 2, 0b01010), Some(0b10001));
-    assert_eq!(advance(&bases, 2, 0b10001), Some(0b10010));
-    assert_eq!(advance(&bases, 2, 0b10010), Some(0b11000));
-    assert_eq!(advance(&bases, 2, 0b11000), None);
+    assert_eq!(advance(&bases, 2, 0b00011), 0b01001);
+    assert_eq!(advance(&bases, 2, 0b01001), 0b01010);
+    assert_eq!(advance(&bases, 2, 0b01010), 0b10001);
+    assert_eq!(advance(&bases, 2, 0b10001), 0b10010);
+    assert_eq!(advance(&bases, 2, 0b10010), 0b11000);
+    assert_eq!(advance(&bases, 2, 0b11000), 0b00011);
 }
 
 #[test]
@@ -132,13 +129,13 @@ fn test_advance_corner_1() {
     let u32max = std::u32::MAX;
 
     let bases = make_bases(0b0);
-    assert_eq!(advance(&bases, 0, 0b0000), None);
+    assert_eq!(advance(&bases, 0, 0b0000), 0b0000);
 
     let bases = make_bases(u32max);
-    assert_eq!(advance(&bases, 31, u32max - 1), None);
-    assert_eq!(advance(&bases, 32, u32max), None);
+    assert_eq!(advance(&bases, 31, u32max - 1), (u32max - 1) >> 1);
+    assert_eq!(advance(&bases, 32, u32max), u32max);
 
     let bases = make_bases(0x8000_0001);
-    assert_eq!(advance(&bases, 1, 0x0000_0001), Some(0x8000_0000));
-    assert_eq!(advance(&bases, 1, 0x8000_0000), None);
+    assert_eq!(advance(&bases, 1, 0x0000_0001), 0x8000_0000);
+    assert_eq!(advance(&bases, 1, 0x8000_0000), 0x0000_0001);
 }
