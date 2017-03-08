@@ -28,10 +28,10 @@ and is straight-forward to use, as it provides an `Iterator<u32>`.
 
 You may already know the "usual" algorithm for computing the
 lexicographically next permutation of bits in an `int` from the
-[bithacks page](https://graphics.stanford.edu/~seander/bithacks.html)
+[bithacks page](https://graphics.stanford.edu/~seander/bithacks.html#NextBitPermutation)
 or elsewhere:
 
-```
+```C
 unsigned int v; // current permutation of bits 
 unsigned int w; // next permutation of bits
 
@@ -60,17 +60,56 @@ Starting with a value like `0000 1001`, this produces sequences like this:
 
 ### Masked permutations
 
-FIXME: Explain
+Masked permutations are a strict generalization.  In other words:
+`masked_permute` can emulate the "normal" next-permutation algorithm by
+just setting the mask to `!0u32`.
+
+Specifically, let's assume you have a mask `0b1001_1110_0110_0111u32`
+and want to iterate over each value that "chooses" exactly
+two non-identical set bits of this mask.  Then it would produce these values:
+
+* `0b0000_0000_0000_0011u32`
+* `0b0000_0000_0000_0101u32`
+* `0b0000_0000_0000_0110u32`
+* `0b0000_0000_0010_0001u32`
+* `0b0000_0000_0010_0010u32`
+* `0b0000_0000_0010_0100u32`
+* `0b0000_0000_0100_0001u32`
+
+As you can see, the "middle bits" were just skipped.
+
+"But that's easy!  It's not NP-hard!"  you might say.  And you're right,
+it's pretty easy to do this in a more readable way using sets or lists
+or any other higher-level representation.  You might even go so far and
+use the original algorithm together with a masked-expand step.
+
+However, that would (necessarily) still be slower than this.
+This implementation directly enumerates the desired values,
+not wasting any time on overhead (as abstractions would inevitably cause in this case),
+non-permutations (as some naive approaches might generate internally and then skip over),
+or inefficient instructions (see notes in [Install](#install)).
 
 ### Corner cases
 
-0-bit mask, (absence of) wrap-around
+In cases where there are no such permutations, the `Iterator` will appear to be empty;
+just like one would expect.
+Technically, this abstraction costs another conditional branch that could be saved,
+which is why the `raw` module contains the raw computational primitives
+that don't need any conditional branching whatsever.
+
+When `mask == 0`, this is actually a special case of the above,
+unless you want a permutation where 0 bits are set.
+That, of course, exists.
+
+This project does not explicitly support starting with an arbitrary permutation yet,
+but it might be added if there's actually a use case for that.
+[Tell me](#contribute) if there is!
 
 ## Install
 
 Add at an appropriate position to your `Cargo.toml`:
 
-```
+```TOML
 [dependencies]
 masked_permut = { git = "https://github.com/BenWiederhake/masked_permute.git" }
 ```
@@ -80,13 +119,39 @@ does not have any dependencies.
 
 <!-- FIXME: Check whether that acutally works! -->
 
+### Additional step for best performance
+
+For best performance, you should allow `rustc` (or in this case, LLVM actually)
+to use special instructions that can speed up execution even more.
+Specifically, this library makes extensive use of `u32::count_ones()`,
+which could be compiled to the single special-purpose instruction `popcnt`.
+
+To enable this instruction, add this to your `.cargo/config` file
+[somewhere up the tree](http://doc.crates.io/config.html#hierarchical-structure):
+
+```TOML
+[build]
+rustflags = ["-C", "target-feature=+popcnt"]
+```
+
+Feel free to be even more specific about the target architecture.
+I only highlighted this singular instruction, as it is available
+on all common architectures, and may have the most impact.
+
+<!--
+  Assuming that the processor doesn't already recognize the pattern and
+  optimize on its own.  In this case, `popcnt` might still be of advantage
+  because of instruction cache reasons.
+  The "bitcount hack" is pretty long!
+-->
+
 ## Usage
 
 Just use it!  No dependencies, and it's short enough.
 The complexity lies in constructing an algorithm,
 not in writing the code.
 
-```
+```Rust
 extern crate masked_permute;
 use masked_permute::Permutations;
 
