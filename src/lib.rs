@@ -6,23 +6,26 @@ pub mod raw;
 pub struct Permutations {
     mask: u32,
     count: u32,
+    bases: Vec<u32>,
+    start: Option<u32>,
 }
 
 /// Iterator object, yields single permutations and has a 'next' method.
 /// Not supposed to be stored explicitly.
-pub struct PermIter {
-    bases: Vec<u32>,
+pub struct PermIter<'a> {
+    bases: &'a [u32],
+    mask: u32,
     ones: u32,
     next: Option<u32>,
 }
 
-impl Iterator for PermIter {
+impl<'a> Iterator for PermIter<'a> {
     type Item = u32;
 
     fn next(&mut self) -> Option<u32> {
         let to_return: Option<u32> = self.next;
         if let Some(last_perm) = self.next {
-            self.next = raw::advance(&self.bases, self.ones, last_perm);
+            self.next = raw::advance(self.bases, self.ones, last_perm);
         }
         to_return
     }
@@ -30,52 +33,41 @@ impl Iterator for PermIter {
 
 impl Permutations {
     pub fn over(mask: u32, count: u32) -> Self {
-        Permutations {
-            mask: mask,
-            count: count,
+        if mask.count_ones() < count {
+            Permutations {
+                mask: mask,
+                count: count,
+                bases: vec![],
+                start: None,
+            }
+        } else {
+            let bases = raw::make_bases(mask);
+            let start = *bases.last().unwrap();
+            Permutations {
+                mask: mask,
+                count: count,
+                bases: bases,
+                start: Some(start),
+            }
         }
     }
 
     pub fn iter(&self) -> PermIter {
-        if self.mask.count_ones() < self.count {
-            // Use invalid values in many places, in order to fail-fast
-            // if anything goes wrong.
-            PermIter{
-                bases: vec![],
-                ones: u32::max_value(),
-                next: None,
-            }
-        } else {
-            let bases = raw::make_bases(self.mask);
-            assert!(self.count < 33);
-            let start: u32 = bases[self.count as usize];
-            PermIter{
-                bases: bases,
-                ones: self.count,
-                next: Some(start),
-            }
+        PermIter{
+            bases: self.bases.as_slice(),
+            mask: self.mask,
+            ones: self.count,
+            next: self.start,
         }
-    }
-}
-
-/// Provide a consuming iterator,
-/// even though there is no "consumption" going on.
-/// This simplifies some code, but may be considered bad style.
-impl IntoIterator for Permutations {
-    type Item = u32;
-    type IntoIter = PermIter;
-
-    fn into_iter(self) -> PermIter {
-        self.iter()
     }
 }
 
 /// Provide a non-consuming iterator.
 impl<'a> IntoIterator for &'a Permutations {
     type Item = u32;
-    type IntoIter = PermIter;
+    type IntoIter = PermIter<'a>;
 
-    fn into_iter(self) -> PermIter {
+    fn into_iter(self) -> PermIter<'a> {
         self.iter()
     }
 }
@@ -131,6 +123,7 @@ fn test_perm_collect() {
     assert_eq!(p, vec![0b0001, 0b0100, 0b1000]);
 }
 
+/*
 #[test]
 fn test_perm_for_consuming() {
     let mut perms = Vec::<u32>::with_capacity(3);
@@ -139,7 +132,7 @@ fn test_perm_for_consuming() {
         perms.push(p);
     }
     assert_eq!(perms, vec![0b0001000, 0b0100000, 0b1000000]);
-}
+} // */
 
 #[test]
 fn test_perm_for_ref() {

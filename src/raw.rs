@@ -56,7 +56,7 @@ fn test_bases_11011() {
 /// and 64-bit hardware.  This is considered the "hot path".
 /// Note that the initialization are expected to be called significantly less often,
 /// so 'make_bases' can be considered cold.
-pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> Option<u32> {
+pub fn advance(bases: &[u32], ones: u32, last_perm: u32) -> Option<u32> {
     // Hot path, so disable some assertions for release.
     debug_assert_eq!(last_perm.count_ones(), ones);
     debug_assert!(ones <= (bases.len() - 1) as u32);
@@ -96,35 +96,35 @@ pub fn advance(bases: &Vec<u32>, ones: u32, last_perm: u32) -> Option<u32> {
 #[test]
 fn test_advance_11_1() {
     let bases = make_bases(0b11);
-    assert_eq!(advance(&bases, 1, 0b01), Some(0b10));
-    assert_eq!(advance(&bases, 1, 0b10), None);
+    assert_eq!(advance(bases.as_slice(), 1, 0b01), Some(0b10));
+    assert_eq!(advance(bases.as_slice(), 1, 0b10), None);
 }
 
 #[test]
 fn test_advance_1101_1() {
     let bases = make_bases(0b1101);
-    assert_eq!(advance(&bases, 1, 0b0001), Some(0b0100));
-    assert_eq!(advance(&bases, 1, 0b0100), Some(0b1000));
-    assert_eq!(advance(&bases, 1, 0b1000), None);
+    assert_eq!(advance(bases.as_slice(), 1, 0b0001), Some(0b0100));
+    assert_eq!(advance(bases.as_slice(), 1, 0b0100), Some(0b1000));
+    assert_eq!(advance(bases.as_slice(), 1, 0b1000), None);
 }
 
 #[test]
 fn test_advance_1101_2() {
     let bases = make_bases(0b1101);
-    assert_eq!(advance(&bases, 2, 0b0101), Some(0b1001));
-    assert_eq!(advance(&bases, 2, 0b1001), Some(0b1100));
-    assert_eq!(advance(&bases, 2, 0b1100), None);
+    assert_eq!(advance(bases.as_slice(), 2, 0b0101), Some(0b1001));
+    assert_eq!(advance(bases.as_slice(), 2, 0b1001), Some(0b1100));
+    assert_eq!(advance(bases.as_slice(), 2, 0b1100), None);
 }
 
 #[test]
 fn test_advance_11011_2() {
     let bases = make_bases(0b11011);
-    assert_eq!(advance(&bases, 2, 0b00011), Some(0b01001));
-    assert_eq!(advance(&bases, 2, 0b01001), Some(0b01010));
-    assert_eq!(advance(&bases, 2, 0b01010), Some(0b10001));
-    assert_eq!(advance(&bases, 2, 0b10001), Some(0b10010));
-    assert_eq!(advance(&bases, 2, 0b10010), Some(0b11000));
-    assert_eq!(advance(&bases, 2, 0b11000), None);
+    assert_eq!(advance(bases.as_slice(), 2, 0b00011), Some(0b01001));
+    assert_eq!(advance(bases.as_slice(), 2, 0b01001), Some(0b01010));
+    assert_eq!(advance(bases.as_slice(), 2, 0b01010), Some(0b10001));
+    assert_eq!(advance(bases.as_slice(), 2, 0b10001), Some(0b10010));
+    assert_eq!(advance(bases.as_slice(), 2, 0b10010), Some(0b11000));
+    assert_eq!(advance(bases.as_slice(), 2, 0b11000), None);
 }
 
 #[test]
@@ -132,13 +132,13 @@ fn test_advance_corner_1() {
     let u32max = std::u32::MAX;
 
     let bases = make_bases(0b0);
-    assert_eq!(advance(&bases, 0, 0b0000), None);
+    assert_eq!(advance(bases.as_slice(), 0, 0b0000), None);
 
     let bases = make_bases(u32max);
-    assert_eq!(advance(&bases, 31, u32max - 1), None);
-    assert_eq!(advance(&bases, 32, u32max), None);
+    assert_eq!(advance(bases.as_slice(), 31, u32max - 1), None);
+    assert_eq!(advance(bases.as_slice(), 32, u32max), None);
 
     let bases = make_bases(0x8000_0001);
-    assert_eq!(advance(&bases, 1, 0x0000_0001), Some(0x8000_0000));
-    assert_eq!(advance(&bases, 1, 0x8000_0000), None);
+    assert_eq!(advance(bases.as_slice(), 1, 0x0000_0001), Some(0x8000_0000));
+    assert_eq!(advance(bases.as_slice(), 1, 0x8000_0000), None);
 }
