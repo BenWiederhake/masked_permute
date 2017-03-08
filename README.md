@@ -162,8 +162,6 @@ for x in Permutations::over(mask, 3) {
 }
 ```
 
-<!-- FIXME: Check whether that actually compiles. -->
-
 ## TODOs
 
 Next up are these:
