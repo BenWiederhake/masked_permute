@@ -1,3 +1,10 @@
+# DEPRECATION NOTICE
+
+I don't maintain this code any longer.  Feel free to use or fork it.
+I'd be happy to link to your fork.
+
+See below what replacement I found for my use case.
+
 # masked_permute
 
 > Computes the lexicographically next permutation *within* a bitmask.
@@ -13,6 +20,13 @@ using dozens of instructions.
 
 Or just use this library, which only needs very few instructions per permute step,
 and is straight-forward to use, as it provides an `Iterator<u32>`.
+
+Note that in some cases, you can avoid this entire situation:
+*Counting* within a bitmask is surprisingly easy, and my use case
+actually works better with this.  Specifically:
+
+- [Counting DOWN: `for (int submask = mask; submask; submask = (submask - 1) & mask) {`](https://www.quora.com/What-are-some-of-the-amazing-math-tricks-that-you-have-come-across-as-a-coder/answer/Darius-Marian)
+- [Counting UP: `int u = 0; do printf( "%d\n", u ); while(u = u-v&v);`](https://www.quora.com/What-are-some-of-the-amazing-math-tricks-that-you-have-come-across-as-a-coder/answer/Glenn-Rhoads)
 
 ## Table of Contents
 
